@@ -90,6 +90,7 @@ header .hb .btn.danger{background:#c62828}
 <body>
 <header><h1>車庫小籠包內用點餐系統</h1>
   <span class="hb">
+    <button class="btn" onclick="chime()">🔔 測試音</button>
     <button class="btn" onclick="showSales()">今日統計</button>
     <button class="btn danger" onclick="closeShop()">打烊清除</button>
     <span id="clock"></span></span></header>
@@ -344,10 +345,21 @@ function hideToast() { document.getElementById('toast').classList.remove('show')
 
 // 10 分鐘提醒
 let actx = null;
+// iPad Safari 規定:聲音必須先由「手指點一下」啟動才會響。
+// 這裡在第一次點畫面時就把音訊解鎖,之後定時器觸發的提醒才聽得到。
+function unlockAudio() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state !== 'running') actx.resume();
+    const s = actx.createBufferSource();
+    s.buffer = actx.createBuffer(1, 1, 22050); s.connect(actx.destination); s.start(0);
+  } catch (e) {}
+}
+['touchstart', 'touchend', 'pointerdown', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, {passive: true}));
 function tones(list) {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
+    if (actx.state !== 'running') actx.resume();
     list.forEach(([f, at, d]) => {
       // 鈴聲:基音 + 兩個泛音,快速起音後慢慢衰減,像門鈴
       [[1, .28], [2, .08], [3, .03]].forEach(([mul, vol]) => {
