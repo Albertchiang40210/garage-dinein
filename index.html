@@ -90,7 +90,8 @@ header .hb .btn.danger{background:#c62828}
 <body>
 <header><h1>車庫小籠包內用點餐系統</h1>
   <span class="hb">
-    <button class="btn" onclick="chime()">🔔 測試音</button>
+    <button class="btn" onclick="chime()">🔔 送達音</button>
+    <button class="btn" onclick="beep()">⚠ 逾時音</button>
     <button class="btn" onclick="showSales()">今日統計</button>
     <button class="btn danger" onclick="closeShop()">打烊清除</button>
     <span id="clock"></span></span></header>
@@ -375,7 +376,8 @@ function tones(list) {
   } catch (e) {}
 }
 const dingdong = at => [[784, at, 1.0], [622, at + .55, 1.6]];             // 餐廳門鈴「叮—咚」(高→低)
-const beep = () => tones([...dingdong(0), ...dingdong(2.2)]);               // 逾時:叮咚連響兩次
+const alarm = at => [[1175, at, .22], [1175, at + .28, .22], [1175, at + .56, .22]]; // 急促「叮叮叮」
+const beep = () => tones([...alarm(0), ...alarm(1.2)]);                     // 逾時:高音急促「叮叮叮」連響兩輪,和叮咚明顯不同
 const chime = () => tones(dingdong(0));                                     // 全數送達:叮咚一次
 function check() {
   pruneSales();
