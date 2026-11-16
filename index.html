@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>車庫小籠包內用點餐系統</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#3a2f28">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,"PingFang TC",sans-serif;background:#f3f1ed;color:#222;height:100vh;display:flex;flex-direction:column}
+header{background:#3a2f28;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:18px;margin:0}
+#alert{display:none;background:#e53935;color:#fff;padding:10px 16px;font-weight:bold}
+#alert.show{display:block;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.6}}
+main{flex:1;display:flex;min-height:0}
+#tables{flex:1;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr);gap:10px;padding:14px;align-content:center;background:#e8e2d6}
+.table{display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border-radius:16px;border:4px solid transparent;padding:4px}
+.table svg{width:100%;max-width:220px;max-height:24vh;height:auto}
+.table .chair{fill:#8d6e63}
+.table .top{fill:#9e9e9e;stroke:#5d4037;stroke-width:4}
+.table.pending{background:#ffebee;border-color:#e53935}
+.table.pending.late{animation:tblink 1s infinite}
+@keyframes tblink{50%{background:#ffcdd2;border-color:#b71c1c}}
+.table.pending .top{fill:#e53935}
+.table.done .top{fill:#43a047}
+.table .num{font-size:54px;font-weight:bold;fill:#fff;text-anchor:middle}
+.table .wait{font-size:16px;font-weight:bold;color:#e65100}.table .wait.late{color:#fff;background:#c62828;border-radius:10px;padding:2px 10px;animation:blink 1s infinite}
+.table .todo{font-size:16px;color:#444;text-align:center;line-height:1.5;margin-top:2px}
+.table .lbl{font-size:22px;font-weight:bold;margin-top:4px}
+.table.pending .lbl{color:#c62828}.table.done .lbl{color:#2e7d32}.table.empty .lbl{color:#666}
+.table.paid .top{fill:#1e88e5}
+.table.paid{background:#e3f2fd}
+.table.paid .lbl{color:#1565c0}
+.btn.pay{background:#1e88e5}
+.btn.pay.on{background:#455a64}
+.table.sel{border-color:#ffb300;background:#fff8e1}
+#panel{width:50%;max-width:none;background:#fff;border-left:1px solid #ccc;display:none;flex-direction:column;min-height:0}
+#panel.open{display:flex}
+#panel h2{margin:0;padding:12px 16px;background:#ffb300;font-size:18px;display:flex;justify-content:space-between;align-items:center}
+#tabs{display:flex;gap:8px;padding:10px 12px 0}
+.tab{flex:1;font-size:19px;font-weight:bold;padding:12px 0;border-radius:10px;border:2px solid #ffb300;background:#fff;color:#5d4037}
+.tab.on{background:#ffb300;color:#222}
+#menu{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;overflow-y:auto;max-height:50%;border-bottom:1px solid #ddd}
+.item{background:#fff3e0;border:1px solid #ffcc80;border-radius:12px;padding:14px 12px;font-size:19px;cursor:pointer;user-select:none}
+.item b{display:block;color:#bf360c}
+#order{flex:1;overflow-y:auto;padding:6px 10px}
+.row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eee;font-size:16px}
+.row .name{flex:1}
+.row.sent .name{text-decoration:line-through;color:#888}
+.row label{display:flex;align-items:center;gap:4px;font-size:14px}
+.row input[type=checkbox]{width:24px;height:24px}
+.qty button{width:30px;height:30px;font-size:18px;border-radius:6px;border:1px solid #bbb;background:#fafafa}
+footer{padding:12px 16px;border-top:2px solid #333;display:flex;justify-content:space-between;align-items:center;font-size:20px;font-weight:bold}
+button.btn{font-size:15px;padding:8px 14px;border:0;border-radius:8px;background:#3a2f28;color:#fff}
+button.danger{background:#c62828}
+.sendbtn{min-width:92px;height:48px;font-size:17px;font-weight:bold;border-radius:10px;border:2px solid #43a047;background:#fff;color:#2e7d32}
+.prog{font-size:15px;color:#c62828;font-weight:bold;white-space:nowrap}
+.prog.part{color:#ef6c00}.prog.ok{color:#2e7d32}
+.sendbtn:disabled{opacity:1}
+.sendbtn.on{background:#43a047;color:#fff}
+.sendbtn:active{transform:scale(.96)}
+.row{padding:12px 0;font-size:20px}
+#stats{display:flex;gap:18px;align-items:center;background:#fff;padding:8px 16px;border-bottom:1px solid #ddd;font-size:16px;flex-wrap:wrap}
+#stats b{font-size:20px}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:4px;vertical-align:-2px}
+#stats .legend{margin-left:auto;font-size:14px;color:#555}
+header .hb{display:flex;gap:8px;align-items:center}
+header .hb .btn{background:#6d4c41;padding:6px 12px}
+header .hb .btn.danger{background:#c62828}
+.rm{width:40px;height:44px;font-size:18px;border-radius:8px;border:1px solid #bbb;background:#fafafa;color:#c62828}
+#sales{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;align-items:center;justify-content:center}
+#sales.show{display:flex}
+#sales .box{background:#fff;border-radius:16px;padding:20px 24px;width:min(640px,92vw);max-height:88vh;overflow:auto}
+#sales table{width:100%;border-collapse:collapse;font-size:18px;margin-top:10px}
+#sales th,#sales td{border-bottom:1px solid #eee;padding:8px;text-align:right}
+#sales th:first-child,#sales td:first-child{text-align:left}
+#toast{display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:12px 18px;border-radius:12px;z-index:30;font-size:18px;align-items:center;gap:14px}
+#toast.show{display:flex}
+</style>
+</head>
+<body>
+<header><h1>車庫小籠包內用點餐系統</h1>
+  <span class="hb">
+    <button class="btn" onclick="showSales()">今日統計</button>
+    <button class="btn danger" onclick="closeShop()">打烊清除</button>
+    <span id="clock"></span></span></header>
+<div id="alert"></div>
+<div id="stats"></div>
+<main>
+  <div id="tables"></div>
+  <section id="panel">
+    <h2><span id="ptitle"></span><button class="btn" onclick="closePanel()">關閉</button></h2>
+    <div id="tabs"></div>
+    <div id="menu"></div>
+    <div id="order"></div>
+    <footer>
+      <span>總計 $<span id="total">0</span></span>
+      <span><button class="btn" onclick="sendAll()">全部送畢</button> <button class="btn pay" id="payBtn" onclick="payTable()">結帳完畢</button> <button class="btn danger" onclick="clearTable()">清桌</button></span>
+    </footer>
+  </section>
+</main>
+<div id="sales" onclick="if(event.target===this)closeSales()"><div class="box" id="salesBox"></div></div>
+<div id="toast"><span id="toastMsg"></span><button class="btn" id="toastBtn" style="background:#ffb300;color:#222;font-weight:bold"></button></div>
+
+<script>
+const TABLES = 6, REMIND_MS = 10 * 60 * 1000, KEY = 'dinein-v4';
+const CATS = ['主食','包子饅頭','飲品','湯品'];
+const defaultMenu = [
+  {n:'小籠包10個',p:100,c:'主食'},{n:'小籠包(單個)',p:10,c:'主食'},{n:'肉圓',p:50,c:'主食'},{n:'碗粿',p:35,c:'主食'},
+  {n:'黑糖花捲',p:15,c:'包子饅頭'},{n:'蔥花捲',p:15,c:'包子饅頭'},{n:'菜包',p:15,c:'包子饅頭'},{n:'豆沙包',p:15,c:'包子饅頭'},{n:'銀絲卷',p:15,c:'包子饅頭'},{n:'芋泥包',p:15,c:'包子饅頭'},
+  {n:'豆漿(有糖)',p:20,c:'飲品'},{n:'豆漿(無糖)',p:20,c:'飲品'},{n:'米漿',p:25,c:'飲品'},{n:'紅豆薏仁',p:25,c:'飲品'},{n:'南瓜豆漿',p:25,c:'飲品'},{n:'杏仁漿',p:25,c:'飲品'},
+  {n:'黑芝麻燕麥',p:25,c:'飲品'},{n:'燕麥薏仁',p:25,c:'飲品'},{n:'無糖燕麥',p:25,c:'飲品'},{n:'黑豆堅果',p:25,c:'飲品'},{n:'紅茶',p:15,c:'飲品'},
+  {n:'味噌湯',p:30,c:'湯品'}
+];
+let state = JSON.parse(localStorage.getItem(KEY) || 'null') || {
+  menu: defaultMenu,
+  orders: Object.fromEntries([...Array(TABLES)].map((_, i) => [i + 1, []]))
+};
+// 舊資料沒有分類時補上
+// 菜單一律以程式裡的 defaultMenu 為準(改菜單請改程式,重新整理即生效)
+state.menu = defaultMenu;
+// 舊訂單沒有 sentQty 時補上
+Object.values(state.orders).forEach(o => o.forEach(l => { if (l.sentQty === undefined) l.sentQty = l.sent ? l.qty : 0; }));
+state.sales = state.sales || {};   // {日期: {品項: {q份數, s金額}}}
+state.paid = state.paid || {};     // {桌號: {key, lines}} 已結帳的桌子
+let curCat = CATS[0];
+let lastCleared = null, toastTimer = null;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+// order line: {n, p, qty, sent(已送畢數量bool), t(點餐時間), reminded}
+let sel = null;
+const save = () => localStorage.setItem(KEY, JSON.stringify(state));
+
+function status(t) {
+  const o = state.orders[t];
+  if (!o.length) return 'empty';
+  if (!o.every(l => l.sent)) return 'pending';          // 送餐狀態優先:還有沒送的就是紅色
+  return state.paid[t] ? 'paid' : 'done';               // 送完且已結帳 → 藍色
+}
+function overdue(t) {
+  return state.orders[t].some(l => !l.sent && Date.now() - l.t >= REMIND_MS);
+}
+const total = t => state.orders[t].reduce((s, l) => s + l.p * l.qty, 0);
+
+function extra(t, s) {
+  if (s !== 'pending') return '';
+  const todo = state.orders[t].filter(l => !l.sent);
+  const mins = Math.floor((Date.now() - Math.min(...todo.map(l => l.t))) / 60000);
+  const late = overdue(t);
+  const list = todo.slice(0, 3).map(l => `${l.n} ×${l.qty - (l.sentQty || 0)}`).join('<br>') + (todo.length > 3 ? `<br>…還有 ${todo.length - 3} 項` : '');
+  return `<div class="wait ${late ? 'late' : ''}">已等 ${mins} 分鐘</div><div class="todo">${list}</div>`;
+}
+function renderTables() {
+  document.getElementById('tables').innerHTML = [...Array(TABLES)].map((_, i) => {
+    const t = i + 1, s = status(t);
+    const txt = {empty:'空桌', pending:'尚未送齊' + (state.paid[t] ? '(已結帳)' : ''), done:'已送達・尚未結帳', paid:'已送達・已結帳'}[s];
+    return `<div class="table ${s} ${s === 'pending' && overdue(t) ? 'late' : ''} ${sel === t ? 'sel' : ''}" onclick="openTable(${t})">
+      <svg viewBox="0 0 200 170">
+        <rect class="chair" x="55" y="4" width="35" height="22" rx="8"/><rect class="chair" x="110" y="4" width="35" height="22" rx="8"/>
+        <rect class="chair" x="55" y="144" width="35" height="22" rx="8"/><rect class="chair" x="110" y="144" width="35" height="22" rx="8"/>
+        <rect class="chair" x="4" y="60" width="22" height="50" rx="8"/><rect class="chair" x="174" y="60" width="22" height="50" rx="8"/>
+        <rect class="top" x="26" y="26" width="148" height="118" rx="18"/>
+        <text class="num" x="100" y="102">${t}</text>
+      </svg>
+      <div class="lbl">${txt}${s !== 'empty' ? ' ・ $' + total(t) : ''}</div>${extra(t, s)}</div>`;
+  }).join('');
+}
+function renderMenu() {
+  document.getElementById('tabs').innerHTML = CATS.map(c =>
+    `<button class="tab ${c === curCat ? 'on' : ''}" onclick="setCat('${c}')">${c}</button>`).join('');
+  document.getElementById('menu').innerHTML = state.menu.map((m, i) => ({m, i})).filter(x => x.m.c === curCat).map(({m, i}) =>
+    `<div class="item" onclick="addItem(${i})">${m.n}<b>$${m.p}</b></div>`).join('') || '<p style="grid-column:1/-1;text-align:center;color:#888">這個分類還沒有品項</p>';
+}
+function setCat(c) { curCat = c; renderMenu(); }
+function renderOrder() {
+  if (!sel) return;
+  document.getElementById('ptitle').textContent = `第 ${sel} 桌 點單`;
+  document.getElementById('order').innerHTML = state.orders[sel].map((l, i) => `
+    <div class="row ${l.sent ? 'sent' : ''}">
+      <span class="name">${l.n} <small>$${l.p}</small></span>
+      <span class="qty"><button onclick="chg(${i},-1)">−</button> ${l.qty} <button onclick="chg(${i},1)">＋</button></span>
+      <span>$${l.p * l.qty}</span>
+      <span class="prog ${l.sent ? 'ok' : (l.sentQty ? 'part' : '')}">已送 ${l.sentQty || 0}/${l.qty}</span>
+      ${l.sentQty ? `<button class="rm" title="退回一份" onclick="unsend(${i})">↶</button>` : ''}
+      <button class="sendbtn ${l.sent ? 'on' : ''}" ${l.sent ? 'disabled' : ''} onclick="sendOne(${i})">${l.sent ? '✓ 已送畢' : '送 1 份'}</button>
+      <button class="rm" onclick="rmLine(${i})">✕</button>
+    </div>`).join('') || '<p style="color:#888;text-align:center">請點選上方菜單品項</p>';
+  document.getElementById('total').textContent = total(sel);
+  const pb = document.getElementById('payBtn');
+  pb.textContent = state.paid[sel] ? '取消結帳' : '結帳完畢';
+  pb.classList.toggle('on', !!state.paid[sel]);
+}
+function renderStats() {
+  let used = 0, todo = 0, sum = 0;
+  for (let t = 1; t <= TABLES; t++) {
+    if (state.orders[t].length) used++;
+    todo += state.orders[t].filter(l => !l.sent).reduce((a, l) => a + l.qty - (l.sentQty || 0), 0);
+    if (!state.paid[t]) sum += total(t);
+  }
+  document.getElementById('stats').innerHTML = `<span>使用中 <b>${used}</b> / ${TABLES} 桌</span><span style="font-size:20px;font-weight:bold;${todo ? 'color:#c62828' : ''}">待送 <b style="font-size:32px">${todo}</b> 份</span><span>目前未結帳金額 <b>$${sum}</b></span>
+    <span class="legend"><span class="dot" style="background:#9e9e9e"></span>空桌　<span class="dot" style="background:#e53935"></span>尚未送齊　<span class="dot" style="background:#43a047"></span>已全數送達　<span class="dot" style="background:#1e88e5"></span>已結帳</span>`;
+}
+function sendAll() {
+  state.orders[sel].forEach(l => { l.sentQty = l.qty; sync(l); });
+  save(); render();
+  if (status(sel) === 'done') chime();
+}
+function rmLine(i) {
+  const l = state.orders[sel][i];
+  if (!confirm(`刪除「${l.n} ×${l.qty}」?`)) return;
+  touch(sel);
+  state.orders[sel].splice(i, 1); save(); render();
+}
+function render() { renderStats(); renderTables(); renderOrder(); }
+
+function openTable(t) { sel = t; document.getElementById('panel').classList.add('open'); render(); }
+function closePanel() { sel = null; document.getElementById('panel').classList.remove('open'); render(); }
+
+function addItem(i) {
+  const m = state.menu[i], o = state.orders[sel];
+  touch(sel);
+  // 加點：同品項且尚未送出就累加；已送出則新增一行
+  const ex = o.find(l => l.n === m.n && l.p === m.p && !l.sent);
+  if (ex) { ex.qty++; sync(ex); } else o.push({n:m.n, p:m.p, qty:1, sentQty:0, sent:false, t:Date.now(), reminded:false});
+  save(); render();
+}
+function chg(i, d) {
+  const o = state.orders[sel];
+  touch(sel);
+  o[i].qty += d;
+  if (o[i].qty <= 0) o.splice(i, 1); else sync(o[i]);
+  save(); render();
+}
+// 每一行記錄「已送幾份」(sentQty),全部送完才算 sent
+function sync(l) {
+  l.sentQty = Math.max(0, Math.min(l.sentQty || 0, l.qty));
+  const was = l.sent;
+  l.sent = l.sentQty >= l.qty;
+  if (l.sent && !was) l.sentAt = Date.now();
+  if (!l.sent) l.sentAt = null;
+  l.reminded = false;
+}
+function sendOne(i) {
+  const l = state.orders[sel][i];
+  l.sentQty = (l.sentQty || 0) + 1; sync(l);
+  save(); render();
+  if (l.sent && status(sel) === 'done') chime();
+}
+function unsend(i) {
+  const l = state.orders[sel][i];
+  l.sentQty = (l.sentQty || 0) - 1; sync(l);
+  save(); render();
+}
+// 結帳完畢:客人付完錢(桌子變藍色,統計在此時計入)。與送餐是分開的兩件事
+function payTable() {
+  const t = sel, o = state.orders[t];
+  if (!o.length) return;
+  if (state.paid[t]) { unpay(t); save(); render(); return; }   // 再按一次 = 取消結帳
+  const lines = o.map(l => ({n:l.n, p:l.p, qty:l.qty})), key = dayKey();
+  addSales(lines, key, 1);
+  state.paid[t] = {key, lines};
+  save(); render();
+}
+function unpay(t) {
+  const p = state.paid[t]; if (!p) return;
+  addSales(p.lines, p.key, -1); delete state.paid[t];
+}
+// 已結帳後又加點/改數量:自動取消結帳,要重新結帳
+function touch(t) {
+  if (!state.paid[t]) return;
+  unpay(t);
+  showToast(`第 ${t} 桌訂單有變動,已取消結帳,請重新結帳`, '知道了', hideToast);
+}
+// 清桌:客人離開後把桌子變回空桌(沒結帳就清桌不會計入統計)
+function clearTable() {
+  const t = sel, o = state.orders[t];
+  if (!o.length) return;
+  const paid = state.paid[t] || null;
+  if (!confirm(paid ? `確定清空第 ${t} 桌?` : `第 ${t} 桌「還沒結帳」,清桌後不會計入統計。確定清空?`)) return;
+  lastCleared = {t, orders:o, paid};
+  state.orders[t] = []; delete state.paid[t]; save(); render();
+  showToast(`第 ${t} 桌已清桌`, '復原', undoClear);
+}
+function undoClear() {
+  if (!lastCleared) return;
+  const {t, orders, paid} = lastCleared;
+  if (paid) state.paid[t] = paid;
+  state.orders[t] = orders;
+  lastCleared = null; save(); render(); hideToast();
+}
+// 整天累計(依品項):結帳時加進去,復原時扣回來
+const dayKey = () => new Date().toLocaleDateString('sv-SE');
+function addSales(lines, key, sign) {
+  const day = state.sales[key] = state.sales[key] || {};
+  lines.forEach(l => {
+    const x = day[l.n] = day[l.n] || {q:0, s:0};
+    x.q += sign * l.qty; x.s += sign * l.p * l.qty;
+    if (x.q <= 0) delete day[l.n];
+  });
+}
+function showSales() {
+  const day = state.sales[dayKey()] || {};
+  const rows = Object.entries(day).sort((a, b) => b[1].q - a[1].q);
+  const sum = rows.reduce((a, [, x]) => a + x.s, 0), qty = rows.reduce((a, [, x]) => a + x.q, 0);
+  document.getElementById('salesBox').innerHTML = `
+    <h2 style="margin:0 0 6px">今日統計(已結帳)</h2>
+    <div style="font-size:20px">共 <b>${qty}</b> 份　營收 <b style="color:#c62828">$${sum}</b></div>
+    <table><tr><th>品項</th><th>份數</th><th>金額</th></tr>${rows.map(([n, x]) =>
+      `<tr><td>${esc(n)}</td><td>${x.q}</td><td>$${x.s}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:#888">今天還沒有結帳紀錄</td></tr>'}</table>
+    <p style="color:#888;font-size:14px">只統計已按「結帳完畢」的桌子,每天自動重新計算。</p>
+    <div style="text-align:right"><button class="btn" onclick="closeSales()">關閉</button></div>`;
+  document.getElementById('sales').classList.add('show');
+}
+// 只保留當天統計,舊日期自動清掉
+function pruneSales() {
+  const k = dayKey();
+  const old = Object.keys(state.sales).filter(d => d !== k);
+  if (old.length) { old.forEach(d => delete state.sales[d]); save(); }
+}
+// 打烊清除:清空所有桌子的訂單與統計
+function closeShop() {
+  const n = Object.values(state.orders).filter(o => o.length).length;
+  if (!confirm(`打烊清除會清空所有桌子的訂單(目前 ${n} 桌有訂單)和今日統計,無法復原。確定?`)) return;
+  for (let t = 1; t <= TABLES; t++) state.orders[t] = [];
+  state.sales = {}; state.paid = {}; lastCleared = null; hideToast(); save(); closePanel();
+}
+function closeSales() { document.getElementById('sales').classList.remove('show'); }
+function showToast(msg, btn, fn) {
+  document.getElementById('toastMsg').textContent = msg;
+  const b = document.getElementById('toastBtn');
+  b.textContent = btn; b.onclick = fn;
+  document.getElementById('toast').classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 30000);
+}
+function hideToast() { document.getElementById('toast').classList.remove('show'); lastCleared = null; }
+
+// 10 分鐘提醒
+let actx = null;
+function tones(list) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    list.forEach(([f, at, d]) => {
+      // 鈴聲:基音 + 兩個泛音,快速起音後慢慢衰減,像門鈴
+      [[1, .28], [2, .08], [3, .03]].forEach(([mul, vol]) => {
+        const t0 = actx.currentTime + at, o = actx.createOscillator(), g = actx.createGain();
+        o.type = 'sine'; o.frequency.value = f * mul;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+        o.connect(g); g.connect(actx.destination);
+        o.start(t0); o.stop(t0 + d + 0.05);
+      });
+    });
+  } catch (e) {}
+}
+const dingdong = at => [[784, at, 1.0], [622, at + .55, 1.6]];             // 餐廳門鈴「叮—咚」(高→低)
+const beep = () => tones([...dingdong(0), ...dingdong(2.2)]);               // 逾時:叮咚連響兩次
+const chime = () => tones(dingdong(0));                                     // 全數送達:叮咚一次
+function check() {
+  pruneSales();
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-TW', {hour12:false});
+  const late = [];
+  let fresh = false;
+  for (let t = 1; t <= TABLES; t++) {
+    if (overdue(t)) {
+      late.push(t);
+      state.orders[t].forEach(l => {
+        if (!l.sent && !l.reminded && Date.now() - l.t >= REMIND_MS) { l.reminded = true; fresh = true; }
+      });
+    }
+  }
+  const a = document.getElementById('alert');
+  a.classList.toggle('show', late.length > 0);
+  a.textContent = late.length ? `⚠ 第 ${late.join('、')} 桌 超過 10 分鐘尚未送齊餐點！` : '';
+  if (fresh) { beep(); if (navigator.vibrate) navigator.vibrate(300); save(); }
+}
+renderMenu(); render(); check();
+setInterval(check, 5000);
+setInterval(() => { renderStats(); renderTables(); }, 15000);
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
