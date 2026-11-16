@@ -11,7 +11,8 @@ self.addEventListener('activate', e => {
 // 有網路就更新快取,沒網路就用快取
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(fetch(e.request).then(r => {
+  // cache:'no-cache' = 每次都向伺服器確認有沒有新檔,不吃瀏覽器 10 分鐘的暫存
+  e.respondWith(fetch(e.request, {cache: 'no-cache'}).then(r => {
     const copy = r.clone();
     caches.open(CACHE).then(c => c.put(e.request, copy));
     return r;
