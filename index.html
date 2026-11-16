@@ -63,7 +63,12 @@ button.danger{background:#c62828}
 .sendbtn:disabled{opacity:1}
 .sendbtn.on{background:#43a047;color:#fff}
 .sendbtn:active{transform:scale(.96)}
-.row{padding:12px 0;font-size:20px}
+.row{padding:12px 0;font-size:20px;flex-wrap:wrap;row-gap:8px}
+.row .name{flex:1 1 100%;font-size:22px;font-weight:bold}
+.row .name small{font-weight:normal;color:#777}
+.row .qty{margin-right:auto}
+/* 直立的 iPad:點單面板加寬,桌子區縮小 */
+@media (max-aspect-ratio:1/1){#panel{width:62%}}
 #stats{display:flex;gap:18px;align-items:center;background:#fff;padding:8px 16px;border-bottom:1px solid #ddd;font-size:16px;flex-wrap:wrap}
 #stats b{font-size:20px}
 .dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:4px;vertical-align:-2px}
