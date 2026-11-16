@@ -156,8 +156,7 @@ function extra(t, s) {
   const todo = state.orders[t].filter(l => !l.sent);
   const mins = Math.floor((Date.now() - Math.min(...todo.map(l => l.t))) / 60000);
   const late = overdue(t);
-  const list = todo.slice(0, 3).map(l => `${l.n} ×${l.qty - (l.sentQty || 0)}`).join('<br>') + (todo.length > 3 ? `<br>…還有 ${todo.length - 3} 項` : '');
-  return `<div class="wait ${late ? 'late' : ''}">已等 ${mins} 分鐘</div><div class="todo">${list}</div>`;
+  return `<div class="wait ${late ? 'late' : ''}">已等 ${mins} 分鐘</div>`;
 }
 function renderTables() {
   document.getElementById('tables').innerHTML = [...Array(TABLES)].map((_, i) => {
