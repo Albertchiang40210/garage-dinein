@@ -13,7 +13,10 @@
 body{margin:0;font-family:-apple-system,"PingFang TC",sans-serif;background:#f3f1ed;color:#222;height:100vh;display:flex;flex-direction:column}
 header{background:#3a2f28;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
 header h1{font-size:18px;margin:0}
-#alert{display:none;background:#e53935;color:#fff;padding:10px 16px;font-weight:bold}
+#flash{display:none;position:fixed;inset:0;background:rgba(229,57,53,.55);z-index:40;pointer-events:none}
+#flash.on{display:block;animation:fl .5s steps(2) infinite}
+@keyframes fl{50%{background:rgba(229,57,53,.05)}}
+#alert{display:none;background:#e53935;color:#fff;padding:16px;font-weight:bold;font-size:28px;text-align:center}
 #alert.show{display:block;animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.6}}
 main{flex:1;display:flex;min-height:0}
@@ -91,10 +94,11 @@ header .hb .btn.danger{background:#c62828}
 <header><h1>車庫小籠包內用點餐系統</h1>
   <span class="hb">
     <button class="btn" onclick="chime()">🔔 送達音</button>
-    <button class="btn" onclick="beep()">⚠ 逾時音</button>
+    <button class="btn" onclick="beep();flash()">⚠ 逾時警報</button>
     <button class="btn" onclick="showSales()">今日統計</button>
     <button class="btn danger" onclick="closeShop()">打烊清除</button>
     <span id="clock"></span></span></header>
+<div id="flash"></div>
 <div id="alert"></div>
 <div id="stats"></div>
 <main>
@@ -346,7 +350,7 @@ function showToast(msg, btn, fn) {
 function hideToast() { document.getElementById('toast').classList.remove('show'); lastCleared = null; }
 
 // 10 分鐘提醒
-let actx = null;
+let actx = null, lastAlarm = 0;
 // iPad Safari 規定:聲音必須先由「手指點一下」啟動才會響。
 // 這裡在第一次點畫面時就把音訊解鎖,之後定時器觸發的提醒才聽得到。
 function unlockAudio() {
@@ -362,11 +366,13 @@ function tones(list) {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state !== 'running') actx.resume();
-    list.forEach(([f, at, d]) => {
+    list.forEach(([f, at, d, kind]) => {
       // 鈴聲:基音 + 兩個泛音,快速起音後慢慢衰減,像門鈴
-      [[1, .28], [2, .08], [3, .03]].forEach(([mul, vol]) => {
+      // 警報(kind='alarm'):方波、音量大、泛音多,聲音尖銳刺耳,一定聽得到
+      const parts = kind === 'alarm' ? [[1, .6]] : [[1, .28], [2, .08], [3, .03]];
+      parts.forEach(([mul, vol]) => {
         const t0 = actx.currentTime + at, o = actx.createOscillator(), g = actx.createGain();
-        o.type = 'sine'; o.frequency.value = f * mul;
+        o.type = kind === 'alarm' ? 'square' : 'sine'; o.frequency.value = f * mul;
         g.gain.setValueAtTime(0.0001, t0);
         g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
         g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
@@ -377,8 +383,14 @@ function tones(list) {
   } catch (e) {}
 }
 const dingdong = at => [[784, at, 1.0], [622, at + .55, 1.6]];             // 餐廳門鈴「叮—咚」(高→低)
-const alarm = at => [[1175, at, .22], [1175, at + .28, .22], [1175, at + .56, .22]]; // 急促「叮叮叮」
-const beep = () => tones([...alarm(0), ...alarm(1.2)]);                     // 逾時:高音急促「叮叮叮」連響兩輪,和叮咚明顯不同
+// 警報聲:高低兩音交替的「嗶-嗶」(像救護車/警報器),連響約 4 秒
+const siren = at => [[1400, at, .25, 'alarm'], [900, at + .3, .25, 'alarm'], [1400, at + .6, .25, 'alarm'], [900, at + .9, .25, 'alarm']];
+const beep = () => tones([...siren(0), ...siren(1.3), ...siren(2.6)]);      // 逾時:強烈警報聲,和叮咚明顯不同
+// 螢幕整片紅色閃爍 3 秒
+function flash() {
+  const f = document.getElementById('flash');
+  f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 3000);
+}
 const chime = () => tones(dingdong(0));                                     // 全數送達:叮咚一次
 function check() {
   pruneSales();
@@ -396,7 +408,12 @@ function check() {
   const a = document.getElementById('alert');
   a.classList.toggle('show', late.length > 0);
   a.textContent = late.length ? `⚠ 第 ${late.join('、')} 桌 超過 10 分鐘尚未送齊餐點！` : '';
-  if (fresh) { beep(); if (navigator.vibrate) navigator.vibrate(300); save(); }
+  // 有逾時的桌子:第一次立刻響,之後每 60 秒再響一次,直到送齊為止
+  if (fresh) save();
+  if (late.length && (fresh || Date.now() - lastAlarm >= 60000)) {
+    lastAlarm = Date.now(); beep(); flash();
+    if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+  }
 }
 renderMenu(); render(); check();
 setInterval(check, 5000);
