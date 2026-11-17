@@ -114,7 +114,7 @@ header .hb .btn.danger{background:#c62828}
 <div id="toast"><span id="toastMsg"></span><button class="btn" id="toastBtn" style="background:#ffb300;color:#222;font-weight:bold"></button></div>
 
 <script>
-const TABLES = 6, REMIND_MS = 10 * 60 * 1000, KEY = 'dinein-v4';
+const IDS = [3,7,2,6,1,5], TABLES = IDS.length, REMIND_MS = 10 * 60 * 1000, KEY = 'dinein-v4';
 const CATS = ['主食','包子饅頭','飲品','湯品'];
 const defaultMenu = [
   {n:'小籠包10個',p:100,c:'主食'},{n:'小籠包(單個)',p:10,c:'主食'},{n:'肉圓',p:50,c:'主食'},{n:'碗粿',p:35,c:'主食'},
@@ -125,7 +125,7 @@ const defaultMenu = [
 ];
 let state = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   menu: defaultMenu,
-  orders: Object.fromEntries([...Array(TABLES)].map((_, i) => [i + 1, []]))
+  orders: Object.fromEntries(IDS.map(t => [t, []]))
 };
 // 舊資料沒有分類時補上
 // 菜單一律以程式裡的 defaultMenu 為準(改菜單請改程式,重新整理即生效)
@@ -133,6 +133,7 @@ state.menu = defaultMenu;
 // 舊訂單沒有 sentQty 時補上
 Object.values(state.orders).forEach(o => o.forEach(l => { if (l.sentQty === undefined) l.sentQty = l.sent ? l.qty : 0; }));
 state.sales = state.sales || {};   // {日期: {品項: {q份數, s金額}}}
+IDS.forEach(t => { state.orders[t] = state.orders[t] || []; });
 state.paid = state.paid || {};     // {桌號: {key, lines}} 已結帳的桌子
 let curCat = CATS[0];
 let lastCleared = null, toastTimer = null;
@@ -161,8 +162,8 @@ function extra(t, s) {
   return `<div class="wait ${late ? 'late' : ''}">已等 ${mins} 分鐘</div>`;
 }
 function renderTables() {
-  document.getElementById('tables').innerHTML = [...Array(TABLES)].map((_, i) => {
-    const t = i + 1, s = status(t);
+  document.getElementById('tables').innerHTML = IDS.map(t => {
+    const s = status(t);
     const txt = {empty:'空桌', pending:'尚未送齊' + (state.paid[t] ? '(已結帳)' : ''), done:'已送達・尚未結帳', paid:'已送達・已結帳'}[s];
     return `<div class="table ${s} ${s === 'pending' && overdue(t) ? 'late' : ''} ${sel === t ? 'sel' : ''}" onclick="openTable(${t})">
       <svg viewBox="0 0 200 170">
@@ -202,7 +203,7 @@ function renderOrder() {
 }
 function renderStats() {
   let used = 0, todo = 0, sum = 0;
-  for (let t = 1; t <= TABLES; t++) {
+  for (const t of IDS) {
     if (state.orders[t].length) used++;
     todo += state.orders[t].filter(l => !l.sent).reduce((a, l) => a + l.qty - (l.sentQty || 0), 0);
     if (!state.paid[t]) sum += total(t);
@@ -331,7 +332,7 @@ function pruneSales() {
 function closeShop() {
   const n = Object.values(state.orders).filter(o => o.length).length;
   if (!confirm(`打烊清除會清空所有桌子的訂單(目前 ${n} 桌有訂單)和今日統計,無法復原。確定?`)) return;
-  for (let t = 1; t <= TABLES; t++) state.orders[t] = [];
+  for (const t of IDS) state.orders[t] = [];
   state.sales = {}; state.paid = {}; lastCleared = null; hideToast(); save(); closePanel();
 }
 function closeSales() { document.getElementById('sales').classList.remove('show'); }
@@ -384,7 +385,7 @@ function check() {
   document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-TW', {hour12:false});
   const late = [];
   let fresh = false;
-  for (let t = 1; t <= TABLES; t++) {
+  for (const t of IDS) {
     if (overdue(t)) {
       late.push(t);
       state.orders[t].forEach(l => {
